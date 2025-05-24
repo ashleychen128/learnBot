@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -19,28 +18,54 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate authentication
-    setTimeout(() => {
-      setIsLoading(false);
-      
-      if (mode === 'login') {
-        toast({
-          title: "Login successful",
-          description: "Welcome back to AI Learning Agent!",
-        });
-      } else {
-        toast({
-          title: "Registration successful",
-          description: "Your account has been created.",
-        });
+    const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
+    const payload =
+      mode === "login"
+        ? { email, password }
+        : { name, email, password };
+
+    try {
+      const response = await fetch("http://localhost:8000/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        let message = "Something went wrong";
+        try {
+          const errorData = await response.json();
+          message = errorData.detail || message;
+        } catch {
+          message = "Load failed";
+        }
+        throw new Error(message);
       }
-      
-      navigate('/chat');
-    }, 1500);
+
+      const data = await response.json();
+
+      if (mode === "login") {
+        localStorage.setItem("email", email);
+        toast({ title: "Login successful", description: "Welcome back to AI Learning Agent!" });
+      } else {
+        toast({ title: "Registration successful", description: "Your account has been created." });
+      }
+
+      navigate("/chat");
+    } catch (error: any) {
+      toast({
+        title: "Authentication failed",
+        description: error.message || "Unexpected error",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -70,7 +95,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode }) => {
               />
             </div>
           )}
-          
+
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -82,7 +107,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode }) => {
               placeholder="you@example.com"
             />
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
             <Input
@@ -94,7 +119,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ mode }) => {
               placeholder="••••••••"
             />
           </div>
-          
+
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (
               <>
